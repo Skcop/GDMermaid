@@ -1,0 +1,46 @@
+graph TD;
+  P1((Inicio))
+P2[Recepción del formato F-CP-002]
+P3{¿Es donación, proyecto o compra?}
+P4[Validación por Coordinadores]
+P5[Verificar proceso de compras]
+P6{¿Requiere evaluación técnica?}
+P7[Evaluación técnica]
+P8[Omitir evaluación]
+P9[Aprobación Dirección Operativa/Financiera]
+P10[Recepción en Almacén]
+P11[Devolver solicitud]
+P12[Validar contra factura]
+P13[Traslado a sede]
+P14[Reportar a compras/proveedor]
+P15{¿Resuelto?}
+P16[Devolver equipo]
+P17[Instalación por proveedor/personal]
+P18[Registro en inventario]
+P19[Solicitud de traslado por Coordinadores]
+P20[Recepción por personal asignado]
+P21((Fin del proceso))
+
+P1 --> P2
+P2 --> P3
+P3 -->|Donación/Proyecto| P4
+P3 -->|Compra| P5
+P4 --> P6
+P6 -->|Sí| P7
+P6 -->|No| P8
+P7 --> P9
+P8 --> P9
+P5 --> P9
+P9 -->|Aprobado| P10
+P9 -->|Rechazado| P11
+P10 --> P12
+P12 -->|OK| P13
+P12 -->|Discrepancias| P14
+P14 --> P15
+P15 -->|Sí| P13
+P15 -->|No| P16
+P13 --> P17
+P17 --> P18
+P18 --> P19
+P19 --> P20
+P20 --> P21
