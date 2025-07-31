@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Diagrama Interactivo By IngSkcop V0.6</title>
+    <script type="module">
+        import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+        mermaid.initialize({ startOnLoad: true });
+        window.renderMermaid = () => mermaid.contentLoaded();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            text-align: left;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+        .export-btn {
+            background-color: #2196F3;
+        }
+        .secondary-btn {
+            background-color: #ff9800;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-top: 10px;
+            font-family: monospace;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .mermaid {
+            max-width: 100%;
+            margin: 20px auto;
+            text-align: center;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .code-actions {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        h3 {
+            color: #34495e;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+        }
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            right: 20px;
+            top: 20px;
+        }
+        .export-options {
+            margin: 15px 0;
+        }
+        .export-options label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Generador de Diagrama Interactivo By IngSkcop V0.6</h2>
+        <div class="button-group">
+            <button onclick="addRow()">➕ Agregar Fila</button>
+            <button onclick="generateDiagram()">🔃 Generar Diagrama</button>
+            <button class="export-btn" onclick="showExportModal()">📤 Exportar Diagrama</button>
+        </div>
+        
+        <table id="diagramTable">
+            <thead>
+                <tr>
+                    <th>Paso ID</th>
+                    <th>Descripción</th>
+                    <th>Siguiente paso ID</th>
+                    <th>Conector</th>
+                    <th>Forma</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>P1</td>
+                    <td contenteditable="true">Solicitud</td>
+                    <td contenteditable="true">P2</td>
+                    <td contenteditable="true"></td>
+                    <td>
+                        <select onchange="updateDiagramFromTable()">
+                            <option value="Inicio">Inicio</option>
+                            <option value="Proceso">Proceso</option>
+                            <option value="Subproceso">Subproceso</option>
+                            <option value="Decisión">Decisión</option>
+                            <option value="Documento">Documento</option>
+                            <option value="Fin">Fin</option>
+                        </select>
+                    </td>
+                    <td><button class="delete-btn" onclick="removeRow(this)">🗑️</button></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h3>Código Mermaid</h3>
+        <textarea id="diagramCode" oninput="updateDiagramFromCode()"></textarea>
+        
+        <div class="code-actions">
+            <button class="secondary-btn" onclick="copyCode()">📋 Copiar Código</button>
+            <button class="secondary-btn" onclick="loadLastDiagram()">⏮️ Cargar Último</button>
+            <button onclick="updateTableFromCode()">🔄 Actualizar tabla desde código</button>
+        </div>
+        
+        <h3>Vista Previa del Diagrama</h3>
+        <div class="mermaid" id="diagramDisplay"></div>
+    </div>
+
+    <!-- Modal para exportación -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <h3>Exportar Diagrama</h3>
+            
+            <div class="export-options">
+                <label for="exportTitle">Nombre del archivo:</label>
+                <input type="text" id="exportTitle" value="mi_diagrama" style="width:100%; padding:8px;">
+                
+                <label>Tipo de archivo:</label>
+                <div>
+                    <input type="radio" id="exportPNG" name="exportType" value="png" checked>
+                    <label for="exportPNG">PNG (Imagen)</label>
+                </div>
+                <div>
+                    <input type="radio" id="exportPDF" name="exportType" value="pdf">
+                    <label for="exportPDF">PDF (Documento)</label>
+                </div>
+                
+                <label>Orientación:</label>
+                <div>
+                    <input type="radio" id="orientPortrait" name="orientation" value="portrait" checked>
+                    <label for="orientPortrait">Vertical</label>
+                </div>
+                <div>
+                    <input type="radio" id="orientLandscape" name="orientation" value="landscape">
+                    <label for="orientLandscape">Horizontal</label>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button onclick="executeExport()">Exportar</button>
+                <button onclick="closeExportModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Variable para controlar edición manual
+        let manualEdit = false;
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar último diagrama si existe
+            const lastDiagram = localStorage.getItem('lastDiagram');
+            if (lastDiagram) {
+                document.getElementById("diagramCode").value = lastDiagram;
+                updateTableFromCode();
+            } else {
+                // Diagrama de ejemplo inicial
+                document.getElementById("diagramCode").value = "graph TD;\n  P1((Solicitud)) --> P2[Procesar]\n  P2 --> P3{¿Aprobado?}\n  P3 -->|Sí| P4[[Documento]]\n  P3 -->|No| P1";
+                updateTableFromCode();
+            }
+        });
+
+        // Función para añadir filas
+        function addRow() {
+            let table = document.getElementById("diagramTable").getElementsByTagName('tbody')[0];
+            let lastRow = table.rows[table.rows.length - 1];
+            let lastStepId = lastRow ? lastRow.cells[0].innerText : "P0";
+            let stepNumber = parseInt(lastStepId.substring(1)) + 1;
+            let stepId = "P" + stepNumber;
+
+            let newRow = table.insertRow();
+            newRow.innerHTML = `
+                <td>${stepId}</td>
+                <td contenteditable="true" oninput="updateDiagramFromTable()">Nuevo paso</td>
+                <td contenteditable="true" oninput="updateDiagramFromTable()"></td>
+                <td contenteditable="true" oninput="updateDiagramFromTable()"></td>
+                <td>
+                    <select onchange="updateDiagramFromTable()">
+                        <option value="Proceso" selected>Proceso</option>
+                        <option value="Inicio">Inicio</option>
+                        <option value="Subproceso">Subproceso</option>
+                        <option value="Decisión">Decisión</option>
+                        <option value="Documento">Documento</option>
+                        <option value="Fin">Fin</option>
+                    </select>
+                </td>
+                <td><button class="delete-btn" onclick="removeRow(this)">🗑️</button></td>
+            `;
+            
+            updateDiagramFromTable();
+        }
+
+        // Función para eliminar filas
+        function removeRow(button) {
+            let row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+            updateDiagramFromTable();
+        }
+
+        // Función principal para generar el diagrama
+        function generateDiagram() {
+            let diagramCode = document.getElementById("diagramCode").value;
+            let diagramDisplay = document.getElementById("diagramDisplay");
+            
+            diagramDisplay.innerHTML = `<pre class="mermaid">${diagramCode}</pre>`;
+            
+            setTimeout(() => {
+                try {
+                    window.renderMermaid();
+                    // Guardar automáticamente el diagrama
+                    localStorage.setItem('lastDiagram', diagramCode);
+                } catch (e) {
+                    diagramDisplay.innerHTML = `<div style="color:red">Error en el diagrama: ${e.message}</div>`;
+                }
+            }, 100);
+        }
+
+        // Actualizar código desde la tabla
+        function updateDiagramFromTable() {
+            if (manualEdit) return;
+            
+            let table = document.getElementById("diagramTable").getElementsByTagName('tbody')[0];
+            let rows = table.getElementsByTagName('tr');
+            let diagramCode = "graph TD;\n";
+
+            let nodes = {};
+
+            // Procesar todos los nodos
+            for (let row of rows) {
+                let cells = row.getElementsByTagName('td');
+                let id = cells[0].innerText.trim();
+                let desc = cells[1].innerText.trim() || id;
+                let shape = cells[4].getElementsByTagName('select')[0].value;
+
+                let shapeFormat = 
+                    shape === "Inicio" ? `(( ${desc} ))` :
+                    shape === "Fin" ? `(( ${desc} ))` :
+                    shape === "Decisión" ? `{ ${desc} }` :
+                    shape === "Subproceso" ? `>${desc}]` :
+                    shape === "Documento" ? `[[ ${desc} ]]` :
+                    `[ ${desc} ]`;
+
+                nodes[id] = shapeFormat;
+                diagramCode += `  ${id}${shapeFormat}\n`;
+            }
+
+            // Procesar conexiones
+            for (let row of rows) {
+                let cells = row.getElementsByTagName('td');
+                let id = cells[0].innerText.trim();
+                let next = cells[2].innerText.trim();
+                let connector = cells[3].innerText.trim();
+
+                if (next && nodes[id]) {
+                    next.split(",").forEach((step, index) => {
+                        step = step.trim();
+                        if (nodes[step]) {
+                            let label = connector.split(",")[index]?.trim();
+                            diagramCode += `  ${id} -->${label ? `|${label}|` : ''} ${step}\n`;
+                        }
+                    });
+                }
+            }
+
+            document.getElementById("diagramCode").value = diagramCode;
+            generateDiagram();
+        }
+
+        // Actualizar diagrama desde el código
+        function updateDiagramFromCode() {
+            manualEdit = true;
+            generateDiagram();
+        }
+
+        // Actualizar tabla desde el código
+        function updateTableFromCode() {
+            let diagramCode = document.getElementById("diagramCode").value;
+            let lines = diagramCode.split('\n').filter(line => line.trim() && !line.startsWith('graph'));
+            
+            let table = document.getElementById("diagramTable").getElementsByTagName('tbody')[0];
+            table.innerHTML = '';
+            
+            let nodes = {};
+            let connections = {};
+
+            // Procesar nodos
+            lines.filter(line => !line.includes('-->')).forEach(line => {
+                let match = line.match(/^\s*(\w+)(.+)/);
+                if (match) {
+                    let [_, id, content] = match;
+                    id = id.trim();
+                    content = content.trim();
+                    
+                    let shape = "Proceso";
+                    let desc = content;
+                    
+                    if (content.startsWith('((') && content.endsWith('))')) {
+                        shape = content.includes('Inicio') ? "Inicio" : "Fin";
+                        desc = content.slice(2, -2).trim();
+                    } else if (content.startsWith('{') && content.endsWith('}')) {
+                        shape = "Decisión";
+                        desc = content.slice(1, -1).replace('?', '').trim();
+                    } else if (content.startsWith('>') && content.endsWith(']')) {
+                        shape = "Subproceso";
+                        desc = content.slice(1, -1).trim();
+                    } else if (content.startsWith('[[') && content.endsWith(']]')) {
+                        shape = "Documento";
+                        desc = content.slice(2, -2).trim();
+                    } else if (content.startsWith('[') && content.endsWith(']')) {
+                        shape = "Proceso";
+                        desc = content.slice(1, -1).trim();
+                    }
+                    
+                    nodes[id] = { shape, desc };
+                }
+            });
+
+            // Procesar conexiones
+            lines.filter(line => line.includes('-->')).forEach(line => {
+                let [fromPart, toPart] = line.split('-->');
+                let from = fromPart.trim();
+                let to = toPart.split('|').map(p => p.trim());
+                let label = to.length > 2 ? to[1] : '';
+                to = to[to.length-1].replace(/\|/g, '');
+                
+                if (!connections[from]) connections[from] = [];
+                connections[from].push({ to, label });
+            });
+
+            // Crear filas en la tabla
+            Object.entries(nodes).forEach(([id, node]) => {
+                let nextSteps = connections[id]?.map(c => c.to).join(', ') || '';
+                let connectors = connections[id]?.map(c => c.label).join(', ') || '';
+                
+                let newRow = table.insertRow();
+                newRow.innerHTML = `
+                    <td>${id}</td>
+                    <td contenteditable="true" oninput="updateDiagramFromTable()">${node.desc}</td>
+                    <td contenteditable="true" oninput="updateDiagramFromTable()">${nextSteps}</td>
+                    <td contenteditable="true" oninput="updateDiagramFromTable()">${connectors}</td>
+                    <td>
+                        <select onchange="updateDiagramFromTable()">
+                            <option value="Inicio" ${node.shape === "Inicio" ? 'selected' : ''}>Inicio</option>
+                            <option value="Proceso" ${node.shape === "Proceso" ? 'selected' : ''}>Proceso</option>
+                            <option value="Subproceso" ${node.shape === "Subproceso" ? 'selected' : ''}>Subproceso</option>
+                            <option value="Decisión" ${node.shape === "Decisión" ? 'selected' : ''}>Decisión</option>
+                            <option value="Documento" ${node.shape === "Documento" ? 'selected' : ''}>Documento</option>
+                            <option value="Fin" ${node.shape === "Fin" ? 'selected' : ''}>Fin</option>
+                        </select>
+                    </td>
+                    <td><button class="delete-btn" onclick="removeRow(this)">🗑️</button></td>
+                `;
+            });
+            
+            manualEdit = false;
+        }
+
+        // Función para copiar código
+        function copyCode() {
+            const codeTextarea = document.getElementById("diagramCode");
+            codeTextarea.select();
+            document.execCommand("copy");
+            
+            showToast("Código copiado al portapapeles!");
+        }
+
+        // Cargar último diagrama guardado
+        function loadLastDiagram() {
+            const lastDiagram = localStorage.getItem('lastDiagram');
+            if (lastDiagram) {
+                document.getElementById("diagramCode").value = lastDiagram;
+                updateTableFromCode();
+                showToast("Último diagrama cargado");
+            } else {
+                showToast("No hay diagramas guardados");
+            }
+        }
+
+        // Mostrar notificación toast
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.style.visibility = "visible";
+            setTimeout(() => {
+                toast.style.visibility = "hidden";
+            }, 2000);
+        }
+
+        // Funciones para exportación
+        function showExportModal() {
+            document.getElementById('exportModal').style.display = 'block';
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').style.display = 'none';
+        }
+
+        function executeExport() {
+            const exportType = document.querySelector('input[name="exportType"]:checked').value;
+            
+            if (exportType === 'png') {
+                exportAsPNG();
+            } else {
+                exportAsPDF();
+            }
+            
+            closeExportModal();
+        }
+
+        function exportAsPNG() {
+            const svgElement = document.querySelector("#diagramDisplay svg");
+            if (!svgElement) {
+                alert("Por favor, genera primero el diagrama.");
+                return;
+            }
+
+            const fileName = document.getElementById('exportTitle').value || "diagrama";
+            const svgString = new XMLSerializer().serializeToString(svgElement);
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const img = new Image();
+            const scale = 2; // Alta calidad
+
+            img.onload = function() {
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                ctx.scale(scale, scale);
+                ctx.drawImage(img, 0, 0);
+                
+                const link = document.createElement("a");
+                link.href = canvas.toDataURL("image/png");
+                link.download = `${fileName}.png`;
+                link.click();
+                showToast("Diagrama exportado como PNG");
+            };
+
+            img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgString)));
+        }
+
+        function exportAsPDF() {
+            const svgElement = document.querySelector("#diagramDisplay svg");
+            if (!svgElement) {
+                alert("Por favor, genera primero el diagrama.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const fileName = document.getElementById('exportTitle').value || "diagrama";
+            const orientation = document.querySelector('input[name="orientation"]:checked').value;
+            
+            const pdf = new jsPDF({
+                orientation,
+                unit: 'mm'
+            });
+
+            const svgString = new XMLSerializer().serializeToString(svgElement);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            const scale = 2; // Alta calidad
+
+            img.onload = function() {
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                ctx.scale(scale, scale);
+                ctx.drawImage(img, 0, 0);
+                
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = pdf.internal.pageSize.getWidth() - 20;
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width / scale;
+                
+                pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth, pdfHeight);
+                pdf.save(`${fileName}.pdf`);
+                showToast("Diagrama exportado como PDF");
+            };
+
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+        }
+    </script>
+</body>
+</html>
